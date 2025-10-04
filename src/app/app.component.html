@@ -1,0 +1,257 @@
+<div class="container" [class.light-mode]="!isDarkMode">
+  <img src="/assets/img/logo.png" alt="lol" class="logo">
+  
+  <!-- Theme Toggle Button -->
+  <button class="theme-toggle" (click)="toggleTheme()" aria-label="Toggle theme">
+    <span *ngIf="isDarkMode">☀️</span>
+    <span *ngIf="!isDarkMode">🌙</span>
+  </button>
+  
+  <!-- Comparison Mode Toggle -->
+  <button class="comparison-toggle" (click)="toggleComparisonMode()" [class.active]="isComparisonMode">
+    <span *ngIf="!isComparisonMode">⚖️ Compare</span>
+    <span *ngIf="isComparisonMode">✓ Comparing ({{ selectedChampions.length }}/{{ maxSelections }})</span>
+  </button>
+  
+  <div class="grid-wrapper">
+    <ag-grid-angular
+      style="width: 100%; height: 650px;"
+      [theme]="theme"
+      [rowData]="rowData"
+      [columnDefs]="colDefs"
+      [defaultColDef]="defaultColDef"
+      [gridOptions]="gridOptions"
+      [statusBar]="{ statusPanels: [{ statusPanel: 'agTotalAndFilteredRowCountComponent' }] }"
+    >
+    </ag-grid-angular>
+  </div>
+
+  <!-- Single Champion Modal -->
+    <div class="modal-overlay" *ngIf="showModal && !isComparisonMode" (click)="closeModal()">
+    <div class="modal-content single-champion-modal" [class.light-mode]="!isDarkMode" (click)="$event.stopPropagation()" *ngIf="selectedChampion">
+
+      
+      <div class="modal-body">
+        
+        <div class="champion-image">
+
+          <img [src]="'assets/img/champions/' + selectedChampion.id + '.jpg'" 
+               [alt]="selectedChampion.name"
+               onerror="this.src='assets/img/placeholder.jpg'">
+        </div>
+        
+        <div class="champion-details">
+          <h2>{{ selectedChampion.name }}</h2>
+          <p class="champion-title">{{ selectedChampion.title }}</p>
+                <button class="close-btn" (click)="closeModal()" aria-label="Close">&times;</button>
+          <!-- Best Stats Comparison Notice (SANS ICÔNES) -->
+          <div class="best-stats-notice" *ngIf="!showBestStatsComparison">
+            <p>💡 Compare {{ selectedChampion.name }}'s stats with the best performing champion in each category</p>
+            <button class="compare-best-btn" (click)="toggleBestStatsComparison()">
+              Compare with Best Stats
+            </button>
+          </div>
+          
+          <!-- Regular Stats Grid -->
+          <div class="stats-grid" *ngIf="!showBestStatsComparison">
+            <div class="stat-item">
+              <span class="stat-label">Win Rate</span>
+              <span class="stat-value" [style.color]="selectedChampion.winRate >= 50 ? '#4caf50' : '#f44336'">
+                {{ selectedChampion.winRate }}%
+              </span>
+            </div>
+            
+            <div class="stat-item">
+              <span class="stat-label">Pick Rate</span>
+              <span class="stat-value">{{ selectedChampion.pickRate }}</span>
+            </div>
+            
+            <div class="stat-item">
+              <span class="stat-label">Ban Rate</span>
+              <span class="stat-value" style="color: #d32f2f">{{ selectedChampion.banRate }}</span>
+            </div>
+            
+            <div class="stat-item full-width">
+              <span class="stat-label">Roles</span>
+              <div class="roles-container">
+                <span class="tag-chip" *ngFor="let tag of selectedChampion.tags">{{ tag }}</span>
+              </div>
+            </div>
+                            <button class="delete-champion-btn" (click)="deleteChampion(selectedChampion)">
+            Supprimer
+          </button>
+          </div>
+          
+          <!-- Best Stats Comparison Chart -->
+          <div class="best-stats-comparison" *ngIf="showBestStatsComparison">
+            <div class="comparison-header-small">
+              <h3>Stats Comparison</h3>
+              <button class="back-btn" (click)="toggleBestStatsComparison()">← Back</button>
+            </div>
+            
+            <div class="comparison-chart">
+              <!-- Win Rate Comparison -->
+              <div class="chart-item">
+                <div class="chart-title">Win Rate</div>
+                <div class="chart-bars">
+                  <div class="chart-bar-row">
+                    <span class="bar-name">{{ selectedChampion.name }}</span>
+                    <div class="bar-wrapper">
+                      <div class="bar champion-bar" 
+                           [style.width.%]="getStatPercentage(selectedChampion.winRate, bestStats.winRate)"
+                           [style.background-color]="selectedChampion.winRate >= 50 ? '#4caf50' : '#f44336'">
+                      </div>
+                      <span class="bar-value">{{ selectedChampion.winRate }}%</span>
+                    </div>
+                  </div>
+                  <div class="chart-bar-row">
+                    <span class="bar-name">Best</span>
+                    <div class="bar-wrapper">
+                      <div class="bar best-bar" style="width: 100%; background-color: #FFD700;">
+                      </div>
+                      <span class="bar-value">{{ bestStats.winRate }}%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Pick Rate Comparison -->
+              <div class="chart-item">
+                <div class="chart-title">Pick Rate</div>
+                <div class="chart-bars">
+                  <div class="chart-bar-row">
+                    <span class="bar-name">{{ selectedChampion.name }}</span>
+                    <div class="bar-wrapper">
+                      <div class="bar champion-bar" 
+                           [style.width.%]="getStatPercentage(selectedChampion.pickRate, bestStats.pickRate)"
+                           style="background-color: #0078d7;">
+                      </div>
+                      <span class="bar-value">{{ selectedChampion.pickRate }}</span>
+                    </div>
+                  </div>
+                  <div class="chart-bar-row">
+                    <span class="bar-name">Best</span>
+                    <div class="bar-wrapper">
+                      <div class="bar best-bar" style="width: 100%; background-color: #FFD700;">
+                      </div>
+                      <span class="bar-value">{{ bestStats.pickRate }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Ban Rate Comparison -->
+              <div class="chart-item">
+                <div class="chart-title">Ban Rate</div>
+                <div class="chart-bars">
+                  <div class="chart-bar-row">
+                    <span class="bar-name">{{ selectedChampion.name }}</span>
+                    <div class="bar-wrapper">
+                      <div class="bar champion-bar" 
+                           [style.width.%]="getStatPercentage(selectedChampion.banRate, bestStats.banRate)"
+                           style="background-color: #d32f2f;">
+                      </div>
+                      <span class="bar-value">{{ selectedChampion.banRate }}</span>
+                    </div>
+                  </div>
+                  <div class="chart-bar-row">
+                    <span class="bar-name">Best</span>
+                    <div class="bar-wrapper">
+                      <div class="bar best-bar" style="width: 100%; background-color: #FFD700;">
+                      </div>
+                      <span class="bar-value">{{ bestStats.banRate }}</span>
+                    </div>
+                    
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+          </div>
+          
+        
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Comparison Modal (reste identique) -->
+  <div class="modal-overlay" *ngIf="showModal && isComparisonMode && selectedChampions.length >= 2" (click)="closeModal()">
+    <div class="modal-content comparison-modal" [class.light-mode]="!isDarkMode" (click)="$event.stopPropagation()">
+      <button class="close-btn" (click)="closeModal()" aria-label="Close">&times;</button>
+      
+      <div class="comparison-header">
+        <h2>Champion Comparison</h2>
+        <button class="clear-btn" (click)="clearComparison()">Clear All</button>
+      </div>
+      
+      <div class="champions-avatars">
+        <div class="champion-avatar" *ngFor="let champion of selectedChampions">
+          <button class="remove-champion" (click)="removeChampion(champion)" aria-label="Remove champion">&times;</button>
+          <img [src]="'assets/img/champions/' + champion.id + '.jpg'" 
+               [alt]="champion.name"
+               onerror="this.src='assets/img/placeholder.jpg'">
+          <p>{{ champion.name }}</p>
+        </div>
+      </div>
+      
+      <div class="comparison-stats">
+        <div class="stat-comparison">
+          <h3>Win Rate</h3>
+          <div class="stat-bars">
+            <div class="stat-bar-item" *ngFor="let champion of selectedChampions">
+              <div class="bar-label">
+                <span class="champion-name">{{ champion.name }}</span>
+                <span class="stat-value" [style.color]="champion.winRate >= 50 ? '#4caf50' : '#f44336'">
+                  {{ champion.winRate }}%
+                </span>
+              </div>
+              <div class="bar-container">
+                <div class="bar" 
+                     [style.width.%]="getBarWidth(champion.winRate, 'winRate')"
+                     [style.background-color]="champion.winRate >= 50 ? '#4caf50' : '#f44336'">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="stat-comparison">
+          <h3>Pick Rate</h3>
+          <div class="stat-bars">
+            <div class="stat-bar-item" *ngFor="let champion of selectedChampions">
+              <div class="bar-label">
+                <span class="champion-name">{{ champion.name }}</span>
+                <span class="stat-value">{{ champion.pickRate }}</span>
+              </div>
+              <div class="bar-container">
+                <div class="bar" 
+                     [style.width.%]="getBarWidth(champion.pickRate, 'pickRate')"
+                     style="background-color: #0078d7">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="stat-comparison">
+          <h3>Ban Rate</h3>
+          <div class="stat-bars">
+            <div class="stat-bar-item" *ngFor="let champion of selectedChampions">
+              <div class="bar-label">
+                <span class="champion-name">{{ champion.name }}</span>
+                <span class="stat-value" style="color: #d32f2f">{{ champion.banRate }}</span>
+              </div>
+              <div class="bar-container">
+                <div class="bar" 
+                     [style.width.%]="getBarWidth(champion.banRate, 'banRate')"
+                     style="background-color: #d32f2f">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
